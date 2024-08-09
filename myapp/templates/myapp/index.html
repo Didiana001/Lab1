@@ -1,0 +1,21 @@
+{% comment %} display the sensor data  {% endcomment %}
+<div class="container">
+    <h1>Sensor Data</h1>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Temperature readings for today </th>
+                {% comment %} <th>Humidity</th>
+                <th>Time</th> {% endcomment %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in sensor_data %}
+            <tr>
+                <td>{{ data.temperature }}</td>
+                {% comment %} <td>{{ data.humidity }}</td>
+                <td>{{ data.time }}</td> {% endcomment %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
