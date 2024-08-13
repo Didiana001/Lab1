@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import sense_data
 from .serializers import SenseDataSerializer
+from rest_framework.generics import CreateAPIView
 
 from myapp.models import sense_data
 
@@ -33,4 +34,8 @@ class SenseDataList(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class SenseDataCreate(CreateAPIView):
+    queryset = sense_data.objects.all()
+    serializer_class = SenseDataSerializer
 
