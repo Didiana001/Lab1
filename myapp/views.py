@@ -9,7 +9,8 @@ from rest_framework.generics import CreateAPIView
 
 # Define the index view
 def index(request):
-    return render(request, 'myapp/index.html')
+    sensor_data = sense_data.objects.all()
+    return render(request, 'myapp/index.html', {'sensor_data': sensor_data})
 
 # API views
 class SenseDataList(APIView):
