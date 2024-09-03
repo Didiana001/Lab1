@@ -1,4 +1,3 @@
-{% comment %} display the sensor data with graph {% endcomment %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,7 +56,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for data in sensor_data %}
+                {% for data in sensor_data|slice:":5" %}
                 <tr>
                     <td>{{ data.temperature }}</td>
                     <td>{{ data.humidity }}</td>
@@ -67,14 +66,19 @@
             </tbody>
         </table>
 
-        <!-- Chart Display -->
+        <!-- Temperature Chart Display -->
         <div class="chart-container">
-            <canvas id="sensorChart"></canvas>
+            <canvas id="temperatureChart"></canvas>
+        </div>
+
+        <!-- Humidity Chart Display -->
+        <div class="chart-container">
+            <canvas id="humidityChart"></canvas>
         </div>
     </div>
 
     <script>
-        // Prepare the data for the chart
+        // Prepare the data for the charts
         const labels = [
             {% for data in sensor_data %}
                 '{{ data.time }}',
@@ -90,7 +94,6 @@
             ],
             borderColor: 'rgba(255, 99, 132, 1)',
             backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            yAxisID: 'y-axis-1',
             fill: true,
         };
 
@@ -103,44 +106,49 @@
             ],
             borderColor: 'rgba(54, 162, 235, 1)',
             backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            yAxisID: 'y-axis-2',
             fill: true,
         };
 
-        // Create the chart
-        const ctx = document.getElementById('sensorChart').getContext('2d');
-        const sensorChart = new Chart(ctx, {
+        // Create the Temperature chart
+        const temperatureCtx = document.getElementById('temperatureChart').getContext('2d');
+        const temperatureChart = new Chart(temperatureCtx, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [temperatureData, humidityData],
+                datasets: [temperatureData],
             },
             options: {
                 responsive: true,
                 scales: {
-                    yAxes: [{
-                        id: 'y-axis-1',
-                        type: 'linear',
-                        position: 'left',
-                        ticks: {
-                            beginAtZero: true,
-                        },
-                        scaleLabel: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
                             display: true,
-                            labelString: 'Temperature (°C)',
+                            text: 'Temperature (°C)'
                         }
-                    }, {
-                        id: 'y-axis-2',
-                        type: 'linear',
-                        position: 'right',
-                        ticks: {
-                            beginAtZero: true,
-                        },
-                        scaleLabel: {
+                    }
+                }
+            }
+        });
+
+        // Create the Humidity chart
+        const humidityCtx = document.getElementById('humidityChart').getContext('2d');
+        const humidityChart = new Chart(humidityCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [humidityData],
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
                             display: true,
-                            labelString: 'Humidity (%)',
+                            text: 'Humidity (%)'
                         }
-                    }]
+                    }
                 }
             }
         });
