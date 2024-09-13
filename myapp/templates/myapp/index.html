@@ -37,12 +37,34 @@
         .chart-container {
             margin-top: 50px;
         }
+        .bulb-control {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .bulb-control button {
+            font-size: 1.5em;
+            padding: 10px 20px;
+        }
+        .timer {
+            font-size: 1.2em;
+            margin-top: 10px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Bulb Control Section -->
+        <div class="bulb-control">
+            <h2>Bulb Control</h2>
+            <button id="bulbToggle" class="btn btn-primary">Turn On</button>
+            <div class="timer">
+                Bulb has been <span id="bulbState">off</span> for <span id="bulbTimer">0</span> seconds.
+            </div>
+        </div>
+
         <div class="header">
-            <h1>Sensor Data</h1>
+            <h1>Your Weather Today</h1>
             <p class="lead">View temperature and humidity readings for today.</p>
         </div>
         
@@ -78,6 +100,41 @@
     </div>
 
     <script>
+        let bulbOn = false;
+        let timerInterval;
+        let seconds = 0;
+
+        // Toggle Bulb
+        document.getElementById('bulbToggle').addEventListener('click', function() {
+            bulbOn = !bulbOn;
+            const bulbState = document.getElementById('bulbState');
+            const bulbToggle = document.getElementById('bulbToggle');
+
+            if (bulbOn) {
+                bulbToggle.textContent = 'Turn Off';
+                bulbState.textContent = 'on';
+                startTimer();
+            } else {
+                bulbToggle.textContent = 'Turn On';
+                bulbState.textContent = 'off';
+                stopTimer();
+            }
+        });
+
+        // Timer for counting how long the bulb is on or off
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                seconds++;
+                document.getElementById('bulbTimer').textContent = seconds;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            seconds = 0;
+            document.getElementById('bulbTimer').textContent = seconds;
+        }
+
         // Prepare the data for the charts
         const labels = [
             {% for data in sensor_data %}
