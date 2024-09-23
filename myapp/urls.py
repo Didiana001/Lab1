@@ -1,11 +1,12 @@
 from django.urls import path
-from .views import index, SenseDataList, SenseDataCreate, bulb_control, RelayControlView  # Import all views
+from .views import TemperatureReadingList, TemperatureReadingDetail, TemperatureCreateAPIView, LatestTemperatureAPIView, temperature_monitor, relay_control_view, get_relay_status
 
 urlpatterns = [
-    path('', index, name='index'),  # Main index view
-    path('sense-data/', SenseDataList.as_view(), name='sense-data-list'),  
-    path('api/sense_data/create/', SenseDataCreate.as_view(), name='sense_data_create'),  # API view for creating sense data
-    path('api/bulb_control/', bulb_control, name='bulb_control'),  # API for controlling the bulb
-    path('api/relay_control/', RelayControlView.as_view(), name='relay_control'),  # API for controlling the relay
-   
+    path('temperatures/', TemperatureReadingList.as_view(), name='temperature-list'),
+    path('temperatures/<int:pk>/', TemperatureReadingDetail.as_view(), name='temperature-detail'),
+    path('temperatures/create/', TemperatureCreateAPIView.as_view(), name='temperature-create'),
+    path('latest-temperature/', LatestTemperatureAPIView.as_view(), name='latest-temperature'),
+    path('', temperature_monitor, name='temperature-monitor'),
+    path('relay-control/', relay_control_view, name='relay_control'),  
+    path('getrelaystatus/', get_relay_status, name='get_relay_status'),
 ]

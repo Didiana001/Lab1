@@ -1,102 +1,103 @@
 from django.shortcuts import render
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.views import APIView
+from rest_framework import generics
+from .models import TemperatureReading
+from .serializer import TemperatureReadingSerializer
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import status
-from rest_framework.generics import CreateAPIView
+from rest_framework.decorators import api_view
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 import json
-import requests
-from datetime import datetime
-from .models import sense_data, BulbControl
-from .serializers import SenseDataSerializer
-import logging
 
-# Constants
-ESP32_URL = "http://172.60.61.56:8000/sense-data/create/"  # URL for bulb control API
+# List view for temperature readings
+class TemperatureReadingList(generics.ListAPIView):
+    queryset = TemperatureReading.objects.all()
+    serializer_class = TemperatureReadingSerializer
 
-# Setup logging
-logger = logging.getLogger(__name__)
+# Detail view for a specific temperature reading
+class TemperatureReadingDetail(generics.RetrieveAPIView):
+    queryset = TemperatureReading.objects.all()
+    serializer_class = TemperatureReadingSerializer
 
-def get_bulb_status():
-    try:
-        response = requests.get(ESP32_URL)
-        if response.status_code == 200:
-            return response.json().get("status")
-        logger.error(f"Failed to fetch bulb status. Status code: {response.status_code}")
-        return "unknown"
-    except requests.ConnectionError as e:
-        logger.error(f"Connection error while fetching bulb status: {e}")
-        return "unknown"
+# Create new temperature reading
+class TemperatureCreateAPIView(generics.CreateAPIView):
+    queryset = TemperatureReading.objects.all()
+    serializer_class = TemperatureReadingSerializer
 
-def toggle_bulb():
-    try:
-        response = requests.post(ESP32_URL, json={"toggle": True})
-        if response.status_code == 200:
-            return response.json().get("status")
-        logger.error(f"Failed to toggle bulb. Status code: {response.status_code}")
-        return "unknown"
-    except requests.ConnectionError as e:
-        logger.error(f"Connection error while toggling bulb: {e}")
-        return "unknown"
-
-@csrf_exempt
-def bulb_control(request):
-    if request.method == 'POST':
-        try:
-            action = json.loads(request.body).get('action')
-            if action == "toggle":
-                status = toggle_bulb()
-                BulbControl.objects.create(status=status, time=datetime.now())
-                return JsonResponse({"status": status})
-            else:
-                logger.error(f"Invalid action in POST request: {action}")
-                return JsonResponse({"error": "Invalid action"}, status=400)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error in POST request: {e}")
-            return JsonResponse({"error": "Invalid JSON format"}, status=400)
-
-    # GET request
-    current_status = get_bulb_status()
-    return JsonResponse({"status": current_status})
-
-class SenseDataCreate(CreateAPIView):
-    queryset = sense_data.objects.all()
-    serializer_class = SenseDataSerializer
-
-class SenseDataList(APIView):
+# Retrieve the latest temperature reading
+class LatestTemperatureAPIView(APIView):
     def get(self, request):
-        sensor_data = sense_data.objects.all()
-        serializer = SenseDataSerializer(sensor_data, many=True)
+        latest_temperature = TemperatureReading.objects.latest('id')
+        serializer = TemperatureReadingSerializer(latest_temperature)
         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = SenseDataSerializer(data=request.data)
+# Function-based view for handling both POST and GET requests
+@api_view(['POST', 'GET'])
+def record_data(request):
+    if request.method == 'POST':
+        serializer = TemperatureReadingSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        logger.error(f"Invalid sensor data POST request: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'GET':
+        data = TemperatureReading.objects.all().order_by('-timestamp')[:10]
+        response_data = [
+            {
+                "temperature": entry.temperature,
+                "humidity": entry.humidity,
+                "timestamp": entry.timestamp,
+            }
+            for entry in data
+        ]
+        return Response({"data": response_data}, status=status.HTTP_200_OK)
 
-# Index view to render sensor data
-def index(request):
-    sensor_data = sense_data.objects.all()
-    return render(request, 'myapp/index.html', {'sensor_data': sensor_data})
+# Render the temperature monitor page
+def temperature_monitor(request):
+    return render(request, 'myapp/home.html')
 
-# New API view to control the ESP32 relay module
-class RelayControlView(APIView):
-    def put(self, request):
-        state = request.data.get('state')
-        if state not in ['ON', 'OFF']:
-            return Response({"error": "Invalid state"}, status=status.HTTP_400_BAD_REQUEST)
+relay_state = False  # Initially, relay is OFF
 
+@csrf_exempt
+def relay_control_view(request):
+    global relay_state
+
+    if request.method == 'POST':
         try:
-            response = requests.put(f"{ESP32_URL}?state={state}")
-            if response.status_code == 200:
-                return Response(response.json(), status=status.HTTP_200_OK)
+            data = json.loads(request.body)
+            relay_state_input = data.get('relay_state', None)
+
+            if relay_state_input is not None:
+                # Update relay state based on input
+                if relay_state_input == "true":
+                    relay_state = True
+                    # Add code here to physically turn the relay ON
+                    return JsonResponse({'message': 'Relay turned ON', 'relay_state': 'true'}, status=200)
+                elif relay_state_input == "false":
+                    relay_state = False
+                    # Add code here to physically turn the relay OFF
+                    return JsonResponse({'message': 'Relay turned OFF', 'relay_state': 'false'}, status=200)
+                else:
+                    return JsonResponse({'error': 'Invalid relay state'}, status=400)
             else:
-                logger.error(f"Failed to send PUT request. Status code: {response.status_code}")
-                return Response({"error": "Failed to control relay"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except requests.ConnectionError as e:
-            logger.error(f"Connection error while sending PUT request: {e}")
-            return Response({"error": "Connection error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return JsonResponse({'error': 'No relay state provided'}, status=400)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    elif request.method == 'GET':
+        # Return the current relay state
+        return JsonResponse({'relay_state': 'true' if relay_state else 'false'}, status=200)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+def get_relay_status(request):
+    """
+    This view returns the current relay status in JSON format.
+    It responds with either "true" or "false" depending on the state.
+    """
+    global relay_state
+
+    # Return relay status as JSON
+    return JsonResponse({'relay_state': relay_state})
