@@ -6,7 +6,7 @@
     <title>Sense Data</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script> <!-- Added jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <style>
         body {
             background-color: #f8f9fa; 
@@ -51,19 +51,13 @@
             margin-top: 10px;
             color: #333;
         }
+        #relay-buttons {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Bulb Control Section -->
-        <div class="bulb-control">
-            <h2>Bulb Control</h2>
-            <button id="bulbToggle" class="btn btn-primary">Turn On</button>
-            <div class="timer">
-                Bulb has been <span id="bulbState">off</span> for <span id="bulbTimer">0</span> seconds.
-            </div>
-        </div>
-
         <div class="header">
             <h1>Your Weather Today</h1>
             <p class="lead">View temperature and humidity readings for today.</p>
@@ -77,8 +71,6 @@
                     <th>Humidity (%)</th>
                     <th>Time</th>
                 </tr>
-
-                
             </thead>
             <tbody id="temperatureData">
                 {% for data in temperature_data %}
@@ -100,42 +92,68 @@
         <div class="chart-container">
             <canvas id="humidityChart"></canvas>
         </div>
+
+        <!-- Relay Control Section -->
+        <div id="relay-control" class="text-center">
+            <h2>Bulb Control</h2>
+            <p>Type <strong>"on"</strong> or <strong>"off"</strong> to control the relay</p>
+            <input type="text" id="relayCommandInput" placeholder="Enter 'on' or 'off'" class="form-control" style="width: 200px; display: inline-block;">
+            <button id="submitRelayCommand" class="btn btn-success mt-2">Submit</button>
+            <p id="relayResponseMessage" class="mt-3"></p>
+
+            <!-- Relay Control Buttons -->
+            <div id="relay-buttons">
+                <button id="relayOnBtn" class="btn btn-primary">Turn Relay ON</button>
+                <button id="relayOffBtn" class="btn btn-danger">Turn Relay OFF</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        let bulbOn = false;
-        let timerInterval;
-        let seconds = 0;
-
-        // Toggle Bulb
-        document.getElementById('bulbToggle').addEventListener('click', function() {
-            bulbOn = !bulbOn;
-            const bulbState = document.getElementById('bulbState');
-            const bulbToggle = document.getElementById('bulbToggle');
-
-            if (bulbOn) {
-                bulbToggle.textContent = 'Turn Off';
-                bulbState.textContent = 'on';
-                startTimer();
+        // Relay Control using text input
+        document.getElementById('submitRelayCommand').addEventListener('click', function() {
+            const command = document.getElementById('relayCommandInput').value.trim().toLowerCase();
+            if (command === 'on' || command === 'off') {
+                controlRelay(command);
             } else {
-                bulbToggle.textContent = 'Turn On';
-                bulbState.textContent = 'off';
-                stopTimer();
+                alert('Invalid input. Please enter "on" or "off".');
             }
         });
 
-        // Timer for counting how long the bulb is on or off
-        function startTimer() {
-            timerInterval = setInterval(() => {
-                seconds++;
-                document.getElementById('bulbTimer').textContent = seconds;
-            }, 1000);
-        }
+        // Relay Control using buttons
+        document.getElementById('relayOnBtn').addEventListener('click', function() {
+            controlRelay('on');
+        });
 
-        function stopTimer() {
-            clearInterval(timerInterval);
-            seconds = 0;
-            document.getElementById('bulbTimer').textContent = seconds;
+        document.getElementById('relayOffBtn').addEventListener('click', function() {
+            controlRelay('off');
+        });
+
+        // Function to control relay
+        function controlRelay(command) {
+            fetch('/relay-control/', {
+                method: 'POST',
+                headers: {    
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Ensure CSRF token is included
+                },
+                body: JSON.stringify({ command: command }) // Send the 'on' or 'off' command
+            })
+            .then(response => response.json())
+            .then(data => {
+                const relayMessage = document.getElementById('relayResponseMessage');
+                if (data.message) {
+                    relayMessage.textContent = data.message; // Display the response message (Relay ON/OFF)
+                    relayMessage.style.color = 'green';
+                } else if (data.error) {
+                    relayMessage.textContent = data.error;   // Display the error message
+                    relayMessage.style.color = 'red';
+                }
+                document.getElementById('relayCommandInput').value = '';  // Clear the input
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         }
 
         // Prepare the data for the charts
@@ -246,33 +264,5 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script>
-    function controlRelay(state) {
-        fetch('/relay-control/', {
-            method: 'POST',
-            headers: {    
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}' // Ensure CSRF token is included
-            },
-            body: JSON.stringify({
-                'relay_state': state
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.message) {
-                alert(data.message); // Display the response message (Relay ON/OFF)
-            } else if (data.error) {
-                alert(data.error);
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-</script>
-<div id="relay-control">
-    <button id="relayOnBtn" onclick="controlRelay('true')">Turn Relay ON</button>
-    <button id="relayOffBtn" onclick="controlRelay('false')">Turn Relay OFF</button>
-    </div>
 </body>
 </html>
- 
